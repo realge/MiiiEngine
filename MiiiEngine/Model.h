@@ -12,9 +12,12 @@ public:
     Model(const std::string& filename);
     ~Model();
     unsigned int shaderProgram;
-    void draw() const;
+    void draw(bool drawWireframe) const;
     void setupMesh();
     const glm::mat4& getModelMatrix() const;
+    void rotate(float angle, const glm::vec3& axis);
+    void translate(const glm::vec3& offset);
+    void scale(const glm::vec3& scaleFactor);
 private:
     unsigned int VAO, VBO;
     std::vector<float> vertices;

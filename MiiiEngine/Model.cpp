@@ -5,7 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp> // Ensure this header is included for transformation functions
 #include <glm/gtc/type_ptr.hpp>
 
-Model::Model(const std::string& filename) : VAO(0), VBO(0), shaderProgram(0) {
+Model::Model(const std::string& filename) : VAO(0), VBO(0), shaderProgram(0), modelMatrix(glm::mat4(1.0f)) {
 	initShaders();
     loadModel(filename);
     setupMesh();
@@ -136,21 +136,38 @@ void Model::setupMesh() {
     glBindVertexArray(0);
 }
 
-void Model::draw() const {
-    // Calculate rotation
- 
-    // Use the shader program
-   
+void Model::draw(bool drawWireframe) const {
+    if (drawWireframe) {
+        // Set polygon mode to render lines instead of filled polygons
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    }
 
-    // Set the transformation matrix in the shader
-   
-    // Bind the VAO and draw
+    // Bind the VAO (Vertex Array Object) for the model
     glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, vertices.size() / 3);  // Assuming you are using GL_TRIANGLES and have 36 vertices for the cube
+
+    // Draw the mesh using glDrawArrays or glDrawElements depending on your setup
+    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size() / 3)); // or use glDrawElements if you have indices
+
+    // Revert to the default polygon mode to render filled polygons
+    if (drawWireframe) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
+
+    // Unbind the VAO to clean up
     glBindVertexArray(0);
+}
+void Model::rotate(float angle, const glm::vec3& axis) {
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(angle), axis);
 }
 
 const glm::mat4& Model::getModelMatrix() const {
     return modelMatrix;
 }
 
+void Model::scale(const glm::vec3& scaleFactor) {
+    modelMatrix = glm::scale(modelMatrix, scaleFactor);
+}
+
+void Model::translate(const glm::vec3& offset) {
+    modelMatrix = glm::translate(modelMatrix, offset);
+}
