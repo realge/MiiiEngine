@@ -61,6 +61,7 @@ void ShaderProgram::setUniform(const std::string& name, const glm::mat4& mat) co
 }
 
 void ShaderProgram::setUniform(const std::string& name, const glm::vec3& vec) const {
+
     glUniform3fv(glGetUniformLocation(programID, name.c_str()), 1, glm::value_ptr(vec));
 }
 
@@ -71,3 +72,16 @@ void ShaderProgram::setUniform(const std::string& name, float val) const {
 void ShaderProgram::setUniform(const std::string& name, int val) const {
     glUniform1i(glGetUniformLocation(programID, name.c_str()), val);
 }
+
+void ShaderProgram::fetchUniformLocations() {
+    // Example of how you might fetch locations for known uniforms
+    uniformLocations["projection"] = glGetUniformLocation(programID, "projection");
+    uniformLocations["view"] = glGetUniformLocation(programID, "view");
+    uniformLocations["model"] = glGetUniformLocation(programID, "model");
+    uniformLocations["objectColor"] = glGetUniformLocation(programID, "objectColor");
+    uniformLocations["lightPos"] = glGetUniformLocation(programID, "lightPos");
+    uniformLocations["lightColor"] = glGetUniformLocation(programID, "lightColor");
+    // Fetch others as needed
+}
+
+

@@ -8,27 +8,74 @@
 #include "Model.h"
 #include "Camera.h"
 #include "ShaderProgram.h"
+#include "ModelLoader.h"
+// Vertex Shader
 const char* vertexShaderSource = R"glsl(
-       #version 330 core
-        layout (location = 0) in vec3 aPos;
-        uniform mat4 model;
-        uniform mat4 view;
-        uniform mat4 projection;
+  #version 330 core
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNormal;
 
-        void main() {
-            gl_Position = projection * view * model * vec4(aPos, 1.0);
-        }
-    )glsl";
+out vec3 Normal;
+out vec3 FragPos;
+
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+void main()
+{
+    FragPos = vec3(model * vec4(aPos, 1.0));
+    Normal = Normal = mat3(model) * aNormal;
+
+
+    
+    gl_Position = projection * view * vec4(FragPos, 1.0);
+}
+
+)glsl";
+
+// Fragment Shader
 const char* fragmentShaderSource = R"glsl(
-        #version 330 core
-        out vec4 FragColor;
-        void main() {
-            FragColor = vec4(2.0, 1.5, 0.3, 3.0);  // Customize the color as needed
-        }
-    )glsl";
+ #version 330 core
+out vec4 FragColor;
+
+in vec3 Normal;
+in vec3 FragPos;
+
+uniform vec3 lightPos;
+uniform vec3 lightColor;
+uniform vec3 objectColor;
+
+uniform int debugMode=0;  // Pass in 0 for normal operation, 1 for normal debug, 2 for light debug
+
+void main() {
+    vec3 norm = normalize(Normal);
+    vec3 lightDir = normalize(lightPos - FragPos);
+    float diff = max(dot(norm, lightDir), 0.0);
+    float angle = dot(norm, lightDir);
+   
+
+    if (debugMode == 1) {
+        FragColor = vec4(norm * 0.5 + 0.5, 1.0);  // Visualize normals
+    } else if (debugMode == 2) {
+        FragColor = vec4((lightDir + 1.0) * 0.5, 1.0);  // Visualize light direction
+    } else {
+        vec3 ambient = 0.5 * lightColor;
+        vec3 diffuse = diff * lightColor;
+        vec3 result = (ambient + diffuse) * objectColor;
+        FragColor = vec4(result, 1.0);
+    }
+
+   
+}
+
+)glsl";
 
 
-Camera camera(glm::vec3(0.0f, 1.0f, 1.0f), glm::vec3(0.0f, -1.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), 12.5f);
+
+Camera camera(glm::vec3(0.0f, 1.0f, 1.0f), glm::vec3(0.0f, -1.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), 20.5f);
+
+
 
 void processInput(GLFWwindow* window, float deltaTime) {
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
@@ -41,7 +88,24 @@ void processInput(GLFWwindow* window, float deltaTime) {
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         camera.strafeRight(deltaTime); // Move right
 }
+std::string glmVec3ToString(const glm::vec3& vec) {
+    return "(" + std::to_string(vec.x) + ", " + std::to_string(vec.y) + ", " + std::to_string(vec.z) + ")";
+}
 
+void updateLightWithCamera(const Camera& camera, ShaderProgram& shader) {
+    glm::vec3 lightPosition = camera.position;  // Light follows the camera position
+    glm::vec3 lightDirection = camera.front;    // Light direction is the same as camera front
+
+    shader.use();
+    shader.setUniform("lightPos", lightPosition);
+ 
+
+    // Set other light properties if necessary
+    glm::vec3 lightColor(1.0f, 0.0f, 1.0f);  // Example: white light
+    shader.setUniform("lightColor", lightColor);
+    
+
+}
 
 // Define some global variables to track mouse movement and button state
 float lastX = 400, lastY = 300;
@@ -119,14 +183,17 @@ int main() {
    
     Model myModel("C:/Users/13667/Downloads/models/house1.obj");
     Model myModel2("C:/Users/13667/Downloads/models/Armature_001-(Wavefront OBJ).obj");
-    ShaderProgram shader(vertexShaderSource, fragmentShaderSource);
+    ModelLoader model;
+    model.loadFBX("C:/Users/13667/Downloads/models/Pose_scene.fbx");
+
+    ShaderProgram shaderProgram(vertexShaderSource, fragmentShaderSource);
     float lastFrame = 0.0f;
-    glm::mat4 modelMatrix = glm::mat4(1.0f);
+   
     float fov = glm::radians(102.0f);  // Field of view (45 degrees is commonly used)
     float aspectRatio = 1200.0f / 800.0f;  // Depends on your window size
     float nearPlane = 0.1f;  // Closest distance that can be rendered
     float farPlane = 300.0f;  // Farthest distance that can be rendered
-
+    glm::mat4 modelMatrix = glm::mat4(1.0f);
     glm::mat4 projectionMatrix = glm::perspective(fov, aspectRatio, nearPlane, farPlane);
     float rotationAngle = 0.0f;
     while (!glfwWindowShouldClose(window)) {
@@ -139,25 +206,19 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Use your shader program
-        shader.use(); // Use shader program
-        shader.setUniform("projection", projectionMatrix);
-        shader.setUniform("view", camera.getViewMatrix());
+        shaderProgram.use();
+        shaderProgram.setUniform("projection", projectionMatrix);
+        shaderProgram.setUniform("view", camera.getViewMatrix());
+        shaderProgram.setUniform("model", modelMatrix);
+        shaderProgram.setUniform("objectColor", glm::vec3(1.0f, 0.5f, 0.3f));
+		updateLightWithCamera(camera, shaderProgram);
 
-        glm::mat4 modelMatrix = glm::mat4(1.0f);
-        myModel.rotate(0.2f, glm::vec3(0.0f, 1.0f, 0.0f));
-		//myModel.translate(glm::vec3(0.0f, 0.01f, -0.0f));
-		
-       
-
-        myModel.draw(false,shader); // Draw the model
-        // Pass the view and projection matrices to the shader
-	
-        shader.setUniform("model", myModel2.getModelMatrix());
-        myModel2.draw(true, shader);
+        shaderProgram.setUniform("model", modelMatrix);
+        //myModel2.draw(true, shader);
        
        
         // Draw your model
-      
+       model.render();
 
 
         glfwSwapBuffers(window);

@@ -7,6 +7,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <string>
+#include <unordered_map> 
 
 class ShaderProgram {
 public:
@@ -23,10 +24,11 @@ public:
     void setUniform(const std::string& name, const glm::vec3& vec) const;
     void setUniform(const std::string& name, float val) const;
     void setUniform(const std::string& name, int val) const;
-
+    void fetchUniformLocations();
 private:
     GLuint programID;
     static GLuint compileShader(const char* source, GLenum type);
+    std::unordered_map<std::string, GLint> uniformLocations;
 };
 
 #endif // SHADER_PROGRAM_H
