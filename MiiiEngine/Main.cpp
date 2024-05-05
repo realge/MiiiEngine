@@ -9,58 +9,23 @@
 #include "Camera.h"
 #include "ShaderProgram.h"
 const char* vertexShaderSource = R"glsl(
-#version 330 core
-layout (location = 0) in vec3 aPos;
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
-void main() {
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
-}
-)glsl";
+       #version 330 core
+        layout (location = 0) in vec3 aPos;
+        uniform mat4 model;
+        uniform mat4 view;
+        uniform mat4 projection;
 
+        void main() {
+            gl_Position = projection * view * model * vec4(aPos, 1.0);
+        }
+    )glsl";
 const char* fragmentShaderSource = R"glsl(
-#version 330 core
-out vec4 FragColor;
-void main() {
-    FragColor = vec4(1.0, 0.0, 0.0, 1.0);  // Red color
-}
-)glsl";
-
-GLuint CompileShader(const char* source, GLenum type) {
-    GLuint shader = glCreateShader(type);
-    glShaderSource(shader, 1, &source, NULL);
-    glCompileShader(shader);
-    int success;
-    char infoLog[512];
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(shader, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-    return shader;
-}
-
-GLuint CreateShaderProgram(const char* vertexSource, const char* fragmentSource) {
-    GLuint vertexShader = CompileShader(vertexSource, GL_VERTEX_SHADER);
-    GLuint fragmentShader = CompileShader(fragmentSource, GL_FRAGMENT_SHADER);
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
-    glLinkProgram(program);
-    int success;
-    char infoLog[512];
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(program, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-    }
-    glDetachShader(program, vertexShader);
-    glDetachShader(program, fragmentShader);
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-    return program;
-}
+        #version 330 core
+        out vec4 FragColor;
+        void main() {
+            FragColor = vec4(2.0, 1.5, 0.3, 3.0);  // Customize the color as needed
+        }
+    )glsl";
 
 
 Camera camera(glm::vec3(0.0f, 1.0f, 1.0f), glm::vec3(0.0f, -1.0f, -1.0f), glm::vec3(0.0f, 1.0f, 0.0f), 12.5f);
@@ -136,7 +101,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "HELLO FIRST MODEL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1200 , 800, "HELLO FIRST MODEL", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -150,47 +115,49 @@ int main() {
     glfwSetMouseButtonCallback(window, mouse_button_callback);
 
     glEnable(GL_DEPTH_TEST);
-    GLuint shaderProgram = CreateShaderProgram(vertexShaderSource, fragmentShaderSource);
+ 
    
     Model myModel("C:/Users/13667/Downloads/models/house1.obj");
-    ShaderProgram shader("vertex_shader.glsl", "fragment_shader.glsl");
+    Model myModel2("C:/Users/13667/Downloads/models/Armature_001-(Wavefront OBJ).obj");
+    ShaderProgram shader(vertexShaderSource, fragmentShaderSource);
     float lastFrame = 0.0f;
     glm::mat4 modelMatrix = glm::mat4(1.0f);
     float fov = glm::radians(102.0f);  // Field of view (45 degrees is commonly used)
-    float aspectRatio = 800.0f / 600.0f;  // Depends on your window size
+    float aspectRatio = 1200.0f / 800.0f;  // Depends on your window size
     float nearPlane = 0.1f;  // Closest distance that can be rendered
-    float farPlane = 100.0f;  // Farthest distance that can be rendered
+    float farPlane = 300.0f;  // Farthest distance that can be rendered
+
     glm::mat4 projectionMatrix = glm::perspective(fov, aspectRatio, nearPlane, farPlane);
-    GLuint shaderProgram1 = CreateShaderProgram(vertexShaderSource, fragmentShaderSource);
-    GLuint shaderProgram2 = CreateShaderProgram(vertexShaderSource, fragmentShaderSource);
+    float rotationAngle = 0.0f;
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = glfwGetTime();
         float deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         processInput(window, deltaTime);
+        rotationAngle += 50.0f * deltaTime;
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Use your shader program
-        glUseProgram(myModel.shaderProgram);
-        GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
-        GLint viewLoc = glGetUniformLocation(myModel.shaderProgram, "view");
-        GLint projLoc = glGetUniformLocation(myModel.shaderProgram, "projection");
-        glm::mat4 modelMatrix = glm::mat4(1.0f); 
-        // Set matrices
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(camera.getViewMatrix()));
-        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+        shader.use(); // Use shader program
+        shader.setUniform("projection", projectionMatrix);
+        shader.setUniform("view", camera.getViewMatrix());
 
-        // Pass the view and projection matrices to the shader
+        glm::mat4 modelMatrix = glm::mat4(1.0f);
+        myModel.rotate(0.2f, glm::vec3(0.0f, 1.0f, 0.0f));
+		//myModel.translate(glm::vec3(0.0f, 0.01f, -0.0f));
 		
+       
 
+        myModel.draw(false,shader); // Draw the model
+        // Pass the view and projection matrices to the shader
+	
+        shader.setUniform("model", myModel2.getModelMatrix());
+        myModel2.draw(true, shader);
        
        
         // Draw your model
-        myModel.draw();
-
-       
+      
 
 
         glfwSwapBuffers(window);
